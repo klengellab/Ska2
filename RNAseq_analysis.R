@@ -486,27 +486,6 @@ colnames(bubble_4_sig_KEGG) <- c("ID", "logFC", "AveExpr", "P.value", "adj.P.Val
 
 zscore_week4_KEGG <- circle_dat(bubble_4_KEGG_micro, bubble_4_sig_KEGG_micro)
 
-zscores <- list(zscore_week2_KEGG,zscore_week2_KEGG_micro, zscore_week4_KEGG,zscore_week4_KEGG_micro)
-names(zscores) <- c("zscore_week2_without_microglia", "zscore_week2_with_microglia",
-                    "zscore_week4_without_microglia", "zscore_week4_with_microglia")
-for(i in names(zscores)){
-  if(i == "zscore_week2_without_microglia"){
-    n = i
-    wb <- createWorkbook()
-    addWorksheet(wb, n)
-    writeData(wb, n, zscores[[i]])
-    saveWorkbook(wb, file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/zscores_enrichment_analysis_KEGG.xlsx", overwrite = TRUE)
-  } else {
-    n = i
-    wb <- loadWorkbook(file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/zscores_enrichment_analysis_KEGG.xlsx")
-    addWorksheet(wb, n)
-    writeData(wb, n, zscores[[i]], startRow = 1, startCol = 1, colNames = TRUE)
-    saveWorkbook(wb, file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/zscores_enrichment_analysis_KEGG.xlsx", overwrite = TRUE)
-    
-  }
-}
-# -----
-
 save.image("/PHShome/je637/RNAseq/RNAseq_Ska2/workenvironment/DEG_analysis_cellprop.RDS")
 
 
