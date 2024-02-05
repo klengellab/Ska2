@@ -737,8 +737,8 @@ for(i in names(week4)){
 # Correlation analysis
 # -------- 
 # condition vs. microglia prop/neuron prop
-cor(metadata$num_condition, metadata$prop_microglia) #0.1169199
-cor(metadata$num_condition, metadata$prop_neuron) #-0.1428665
+cor(metadata$num_condition, metadata$prop_microglia) #0.8729364
+cor(metadata$num_condition, metadata$prop_neuron) #-0.8709802
 
 # microglia vs. neuron
 cor(metadata$prop_microglia, metadata$prop_neuron) #-0.9726371
