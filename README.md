@@ -1,7 +1,8 @@
-SKA2 regulated hyperactive secretory autophagy drives neuroinflammation induced neurodegeneration
+**SKA2 regulated hyperactive secretory autophagy drives neuroinflammation induced neurodegeneration
+**
 
+**Abstract**
 
-Abstract
 High levels of proinflammatory cytokines induce neurotoxicity and catalyze inflammation-driven neurodegeneration, 
 but the specific release mechanisms from microglia remain elusive. We demonstrate that secretory autophagy (SA), 
 a non-lytic modality of autophagy for secretion of vesicular cargo, regulates neuroinflammation-mediated neurodegeneration via SKA2 and FKBP5 signaling. 
