@@ -14,5 +14,8 @@ which ultimately drives neurodegeneration. Results from protein expression and c
 **Data and analysis**
 
 * Raw data: RNAseq fastq files can be accessed through GEO accession GSE181203
+* Processed data: The data that is used for the scripts is uploaded to the github page, the counts table is stored in the counts.csv, metadata is stored in the metadata.csv. Additionally, we also                         provide the output from MuSiC were the cell type proportions are stored in the all_cell_type_prop.csv.
 * Analysis: The main analysis normalization, differential expression analysis and enrichment analysis is performed in the RNAseq_analayis.R
-            and the deconvolution of the RNAseq data with MuSiC is performed in the Deconvolution_MuSiC.R. 
+            and the deconvolution of the RNAseq data with MuSiC is performed in the Deconvolution_MuSiC.R. Additionally, for the reviewer we also
+            explored other Deseq2 models and the code is available for those models in RNAseq_analysis_multiple_DEseq2_models.R. The functions that are used throughout the analysis can be found in the               functions.R script
+  
