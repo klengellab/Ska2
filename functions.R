@@ -1,5 +1,15 @@
 # Functions that are used for the Ska2 project from Jakob Hartmann
 
+# Converting ensembl names to external gene names
+biomart_ensembl_to_gene <- function(gene){
+  ensembl=useMart("ensembl")
+  ensembl = useDataset("mmusculus_gene_ensembl",mart=ensembl)
+  names <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name'),
+                 filters = 'ensembl_gene_id', 
+                 values = gene, 
+                 mart = ensembl)
+  return(names)
+}
 
 # This function not just replaces SVD with PCA, but also performs an anova(lm())
 # test for both numeric and factor variables, instead of an lm and kruskal test,
