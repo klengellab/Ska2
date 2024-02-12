@@ -26,52 +26,14 @@ library(corrplot)
 library(factoextra)
 library(openxlsx)
 library(msigdbr)
+library(QCEWAS)
+library(ggrepel)
 options(stringsAsFactors = FALSE)
 set.seed(1234)
 
 # Functions
-source("/PHShome/je637/gitlab/general_functions/plot/customPCA.R")
-ensembl2gene <- function(ensembl_name){
-  if(length(ensembl_name > 1)){
-    gene <- list()
-    for(i in ensembl_name){
-      ens_id <- genes %>% dplyr::filter(ensembl_gene_id == i) %>%
-        dplyr::select(external_gene_name) %>% pull()
-      if(length(ens_id) == 0){
-        gene <- append(gene, i)
-      } else if(ens_id == ""){
-        gene <- append(gene, i)
-      } else if(length(ens_id != 0)){
-        gene <- append(gene, ens_id)
-      } else {
-        gene <- append(gene, i)
-      }
-    }
-  } else {
-    ens_id <- genes %>% dplyr::filter(ensembl_gene_id == ensembl_name) %>%
-      dplyr::select(external_gene_name) %>% pull()
-    if(length(ens_id) == 0){
-      gene <- append(gene, i)
-    } else if(ens_id == ""){
-      gene <- append(gene, i)
-    } else if(length(ens_id != 0)){
-      gene <- append(gene, ens_id)
-    } else {
-      gene <- append(gene, i)
-    }
-  }
-  return(gene)
-}
-genes <- read.csv("/PHShome/je637/general/tables/ensembl_w_description.mouse.csv")
-biomart_ensembl_to_gene <- function(gene){
-  ensembl=useMart("ensembl")
-  ensembl = useDataset("mmusculus_gene_ensembl",mart=ensembl)
-  names <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name'),
-                 filters = 'ensembl_gene_id', 
-                 values = gene, 
-                 mart = ensembl)
-  return(names)
-}
+source("/PHShome/je637/gitlab/rna-seq/Ska2_Jakob_2020/functions.R")
+
 Volcanoplot <- function(data, title){
   # This function will plot a volcano plot of the DEGs with nominal and FDR significant
   # genes
@@ -206,7 +168,6 @@ dds <- DESeqDataSetFromMatrix(countData = filtered_data, colData = coldata,
 dds$condition <- factor(dds$condition, levels = c("SCR_week2", "SKA2_KD_week2", "SCR_week4", "SKA2_KD_week4"))
 dds <- DESeq(dds)
 resultsNames(dds)
-dds0 <- dds # for later use with surrogate variable analysis
 #-------
 
 ## including all cell proportions
@@ -225,7 +186,6 @@ resultsNames(dds_cellprop)
 dds_cell_micro <- DESeqDataSetFromMatrix(countData = filtered_data, colData = coldata,
                                        design = ~ libbatch + prop_microglia + condition)
 dds_cell_micro$condition <- factor(dds_cell_micro$condition, levels = c("SCR_week2", "SKA2_KD_week2", "SCR_week4", "SKA2_KD_week4"))
-dds_cell$condition <- factor(dds_cell$condition, levels = c("SCR_week2", "SKA2_KD_week2", "SCR_week4", "SKA2_KD_week4"))
 dds_cell_micro <- DESeq(dds_cell_micro)
 resultsNames(dds_cell_micro)
 #-------
@@ -249,7 +209,6 @@ log_data <- log2(norm.data + 1)
 custom.PCA(beta = log_data, pd = pd, plot.title = "PCA after normalization")
 
 
-
 ## Results 2 weeks
 
 # without cell type proportions
@@ -257,14 +216,14 @@ Scr2vsSka2 <- results(dds, pAdjustMethod = "bonferroni", contrast=c("condition",
 sigScr2vsSka2 <- as.data.frame(Scr2vsSka2)
 sigScr2vsSka2$genes <- rownames(Scr2vsSka2)
 sig2 <- filter(sigScr2vsSka2, padj <= 0.05)
-length(rownames(sig2)) #3482
+length(rownames(sig2)) 
 
 # with all cell proporotions
 Scr2vsSka2_prop <- results(dds_cellprop, pAdjustMethod = "bonferroni", contrast=c("condition", "SKA2_KD_week2", "SCR_week2"))
 sigScr2vsSka2_prop <- as.data.frame(Scr2vsSka2_prop)
 sigScr2vsSka2_prop$genes <- rownames(Scr2vsSka2_prop)
 sig2_prop <- filter(sigScr2vsSka2_prop, padj <= 0.05)
-length(rownames(sig2_prop)) #256
+length(rownames(sig2_prop)) 
 
 # only with microglia proportions included in the model
 Scr2vsSka2_micro <- results(dds_cell_micro, pAdjustMethod = "bonferroni", contrast=c("condition", "SKA2_KD_week2", "SCR_week2"))
@@ -272,7 +231,7 @@ Scr2vsSka2_micro <- as.data.frame(Scr2vsSka2_micro)
 Scr2vsSka2_micro$genes <- rownames(Scr2vsSka2_micro)
 write.csv(Scr2vsSka2_micro, "/PHShome/je637/RNAseq/RNAseq_Ska2/output/all_genes_2weeks_V2.csv")
 Scr2vsSka2_micro <- filter(Scr2vsSka2_micro, padj <= 0.05)
-length(rownames(Scr2vsSka2_micro)) #1367
+length(rownames(Scr2vsSka2_micro)) 
 write.csv(Scr2vsSka2_micro, "/PHShome/je637/RNAseq/RNAseq_Ska2/output/significant_genes_2weeks_V2.csv")
 
 
@@ -281,18 +240,41 @@ Scr2vsSka2_mm <- results(dds_cell_micro_mural, pAdjustMethod = "bonferroni", con
 Scr2vsSka2_mm <- as.data.frame(Scr2vsSka2_mm)
 Scr2vsSka2_mm$genes <- rownames(Scr2vsSka2_mm)
 Scr2vsSka2_mm_sig <- filter(Scr2vsSka2_mm, padj <= 0.05)
-length(rownames(Scr2vsSka2_mm_sig)) #1012
+length(rownames(Scr2vsSka2_mm_sig)) 
 
+week2_DEGs <- list(sig2, sig2_prop, Scr2vsSka2_micro, Scr2vsSka2_mm_sig)
+names(week2_DEGs) <- c("null_model", "full_model", "micro_model", "micro_mural_model")
+
+week2_DEG <- list()
+for(i in names(week2_DEGs)){
+  data <- week2_DEGs[[i]]  
+  data$genes <- as.character(ensembl2gene(data$genes))
+  week2_DEG <- append(week2_DEG, list(data))
+}
+names(week2_DEG) <- names(week4_DEGs)
+
+for(i in names(week2_DEG)){
+  if(i == "null_model"){
+    n = i
+    wb <- createWorkbook()
+    addWorksheet(wb, n)
+    writeData(wb, n, week2_DEG[[i]])
+    saveWorkbook(wb, file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/DEG_analysis_week2_V2.xlsx", overwrite = TRUE)
+  } else {
+    n = i
+    wb <- loadWorkbook(file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/DEG_analysis_week2_V2.xlsx")
+    addWorksheet(wb, n)
+    writeData(wb, n, week2_DEG[[i]], startRow = 1, startCol = 1, colNames = TRUE)
+    saveWorkbook(wb, file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/DEG_analysis_week2_V2.xlsx", overwrite = TRUE)
+  }
+}
 
 # Venn diagram of the overlap between 2 week significant genes with and without adjusting for cell proportions
-venn.diagram(x = list(rownames(sig2), rownames(Scr2vsSka2_micro), rownames(sig2_prop), rownames(Scr2vsSka2_mm)),
+venn.diagram(x = list(rownames(sig2), rownames(Scr2vsSka2_micro), rownames(sig2_prop), rownames(Scr2vsSka2_mm_sig)),
              category.names = c("DEGs week 2","DEGs with micro", "DEGs with all celltypes", "DEGs with mm"),
              filename = "week2_DEG_overlap.png")
 
 #Volcanoplots
-
-# without cell type composition
-library(ggrepel)
 
 pdf(paste0(output_path, "volcanoplots_without_cell_type.pdf"))
 t <- Volcanoplot(as.data.frame(Scr2vsSka2), "control vs. Ska2 at 2 weeks")
@@ -320,13 +302,13 @@ dev.off()
 Scr4vsSka4 <- results(dds, pAdjustMethod = "bonferroni", contrast=c("condition", "SKA2_KD_week4", "SCR_week4"))
 sigScr4vsSka4 <- as.data.frame(Scr4vsSka4)
 sigScr4vsSka4$genes <- rownames(Scr4vsSka4)
-sigScr4 <- filter(sigScr4vsSka4, padj <= 0.05) #5573
+sigScr4 <- filter(sigScr4vsSka4, padj <= 0.05)
 
 # with all celltypes in the model
 Scr4vsSka4_prop <- results(dds_cellprop, pAdjustMethod = "bonferroni", contrast=c("condition", "SKA2_KD_week4", "SCR_week4"))
 sigScr4vsSka4_prop <- as.data.frame(Scr4vsSka4_prop)
 sigScr4vsSka4_prop$genes <- rownames(Scr4vsSka4_prop)
-sigScr4_prop <- filter(sigScr4vsSka4_prop, padj <= 0.05) #78
+sigScr4_prop <- filter(sigScr4vsSka4_prop, padj <= 0.05)
 
 # with microglia cells in the model
 Scr4vsSka4_micro <- results(dds_cell_micro, pAdjustMethod = "bonferroni", contrast=c("condition", "SKA2_KD_week4", "SCR_week4"))
@@ -335,7 +317,7 @@ Scr4vsSka4_micro$genes <- rownames(Scr4vsSka4_micro)
 Scr4vsSka4_micro$genes <- as.character(ensembl2gene(Scr4vsSka4_micro$genes))
 write.csv(Scr4vsSka4_micro, "/PHShome/je637/RNAseq/RNAseq_Ska2/output/all_genes_4weeks_V2.csv")
 Scr4vsSka4_micro <- filter(Scr4vsSka4_micro, padj <= 0.05)
-length(rownames(Scr4vsSka4_micro)) #601
+length(rownames(Scr4vsSka4_micro)) 
 write.csv(Scr4vsSka4_micro, "/PHShome/je637/RNAseq/RNAseq_Ska2/output/significant_genes_4weeks_V2.csv")
 
 # model with microglia and mural cells
@@ -343,7 +325,35 @@ Scr4vsSka4_mm <- results(dds_cell_micro_mural, pAdjustMethod = "bonferroni", con
 Scr4vsSka4_mm <- as.data.frame(Scr4vsSka4_mm)
 Scr4vsSka4_mm$genes <- rownames(Scr4vsSka4_mm)
 Scr4vsSka4_mm_sig <- filter(Scr4vsSka4_mm, padj <= 0.05)
-length(rownames(Scr4vsSka4_mm_sig)) #646
+length(rownames(Scr4vsSka4_mm_sig)) 
+
+
+week4_DEGs <- list(sigScr4, sigScr4vsSka4_prop, Scr4vsSka4_micro, Scr4vsSka4_mm_sig)
+names(week4_DEGs) <- c("null_model", "full_model", "micro_model", "micro_mural_model")
+
+week4_DEG <- list()
+for(i in names(week4_DEGs)){
+  data <- week4_DEGs[[i]]  
+  data$genes <- as.character(ensembl2gene(data$genes))
+  week4_DEG <- append(week4_DEG, list(data))
+}
+names(week4_DEG) <- names(week4_DEGs)
+
+for(i in names(week4_DEG)){
+  if(i == "null_model"){
+    n = i
+    wb <- createWorkbook()
+    addWorksheet(wb, n)
+    writeData(wb, n, week4_DEG[[i]])
+    saveWorkbook(wb, file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/DEG_analysis_week4_V2.xlsx", overwrite = TRUE)
+  } else {
+    n = i
+    wb <- loadWorkbook(file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/DEG_analysis_week4_V2.xlsx")
+    addWorksheet(wb, n)
+    writeData(wb, n, week4_DEG[[i]], startRow = 1, startCol = 1, colNames = TRUE)
+    saveWorkbook(wb, file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/DEG_analysis_week4_V2.xlsx", overwrite = TRUE)
+  }
+}
 
 # Venn diagram of the overlap between 2 week significant genes with and without adjusting for cell proportions
 venn.diagram(x = list(rownames(sigScr4), rownames(Scr4vsSka4_micro), rownames(sigScr4_prop), rownames(Scr4vsSka4_mm_sig)),
@@ -375,11 +385,8 @@ dev.off()
 # --------
 ## PCA after normalization
 norm.data <-counts(dds, normalized=TRUE)
-norm.data_cell <- counts(dds_cellprop, normalized = TRUE)
 barplot(log2(norm.data + 1))
-all(norm.data == norm.data_cell) # This should be true otherwise something is going wrong in your Deseq2 normalization
-# since adding covariates to the data shouldn't matter on the normalization of the data.
-rm(norm.data_cell)
+
 
 pd <- metadata[,c(3:8,9:19)] # check the colnames I need
 log_data <- log2(norm.data + 1)
@@ -409,7 +416,6 @@ var <- cor(data_x)  # independent variables correlation matrix
 # Variance stabilization transformation
 # --------
 ## This is used to reduce type 1 error
-source("/PHShome/je637/gitlab/rna-seq/Jonathan Human AD/plot_PCA_deseq2_modified.R")
 vsd <- vst(object=dds,blind=FALSE)
 pcaData <- plotPCA.deseq2_modified(vsd, 
                                    ntop = 5000,
@@ -436,15 +442,6 @@ corrplot(M, method = "ellipse",type = 'upper',
 corrplot(M, add = TRUE,method = "number",type = 'lower',
          tl.pos = 'n', cl.pos = 'n',
          p.mat = res1$p, sig.level = .05, insig = 'blank')
-
-pdf(file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/correlation_plot_V2.pdf", width = 15, height = 10)
-corrplot(M, method = "ellipse",type = 'upper',
-         tl.pos = 'tp', tl.srt = 45, tl.col = 'black',
-         p.mat = res1$p, sig.level = .05, insig = 'blank')
-corrplot(M, add = TRUE,method = "number",type = 'lower',
-         tl.pos = 'n', cl.pos = 'n',
-         p.mat = res1$p, sig.level = .05, insig = 'blank')
-dev.off()
 # Here we see that microglia and neuronal cell populations are highly correlated with one another. PC4 captures the library batch
 # --------
 
@@ -601,26 +598,7 @@ mmus <- search_kegg_organism("Mus musculus", by="scientific_name")
 ensembl=useMart("ensembl")
 ensembl = useDataset("mmusculus_gene_ensembl", mart = ensembl)
 
-# I can't use the same KEGG analysis as previously. However that still relied on the clusterprofiler
-# Therefore I'm going to use msigdbr
-
 # KEGG analysis
-
-KEGG_enrichment <- function(genes, universe){
-  # Enrichment analysis with msigdbr/clusterProfiler
-  # genes is a character vector of external gene names
-  # univere is a character vector of external gene names
-  # Databases are from GSEA
-  message("KEGG analysis")
-  KEGG_datasets <- msigdbr(species = "Mus musculus", category = "C2", subcategory = "CP:KEGG")
-  enriched_KEGG <- as.data.frame(enricher(genes, universe = universe, pvalueCutoff = 0.05, 
-                                          qvalueCutoff = 0.05, pAdjustMethod = "BH", TERM2GENE =
-                                            KEGG_datasets[,c("gs_name", "ensembl_gene")]))
-  enriched_KEGG$Description <- str_sub(enriched_KEGG$ID,6) 
-  enriched_KEGG$Description <- str_replace_all(enriched_KEGG$Description, "_", " ")
-  
-  return(enriched_KEGG)
-}
 
 # KEGG analysis without cell type in model
 week2_KEGG <- getBM(attributes=c("ensembl_gene_id", "external_gene_name"),
@@ -671,8 +649,6 @@ res2_kegg_micro <- KEGG_enrichment(week2_KEGG_micro$ensembl_gene_id, all_genes_K
 res2_kegg_all <- KEGG_enrichment(week2_KEGG_all$ensembl_gene_id, all_genes_KEGG$ensembl_gene_id)
 res2_kegg_mm <- KEGG_enrichment(week2_KEGG_mm$ensembl_gene_id, all_genes_KEGG$ensembl_gene_id)
 
-
-
 res4_kegg <- KEGG_enrichment(week4_KEGG$ensembl_gene_id, all_genes_KEGG$ensembl_gene_id)
 res4_kegg_micro <- KEGG_enrichment(week4_KEGG_micro$ensembl_gene_id, all_genes_KEGG$ensembl_gene_id)
 res4_kegg_all <- KEGG_enrichment(week4_KEGG_all$ensembl_gene_id, all_genes_KEGG$ensembl_gene_id)
@@ -696,6 +672,22 @@ week4 <- list("enrichment GO" = enrich_4week, "enrichment GO with microglia" = e
               " enrichment GO with all" = enrich_4week_all, "enrichment KEGG" = res4_kegg,
               "enrichment KEGG with microglia" = res4_kegg_micro,
               "enrichment KEGG with mm" = res4_kegg_mm, "enrichment KEGG with all" = res4_kegg_all)
+
+# Venn diagram to check the overlap on the enriched terms
+venn.diagram(x = list(enrich_2week$Description , enrich_2week_micro$Description, enrich_2week_all$Description, enrich_2week_mm$Description),
+             category.names = c("GO null model", "GO micro model", "GO full model", "GO mm model"),
+             filename = "week2_GO_overlap.png")
+
+venn.diagram(x = list(na.omit(enrich_4week$Description) , na.omit(enrich_4week_micro$Description), na.omit(enrich_4week_all$Description), na.omit(enrich_4week_mm$Description)),
+             category.names = c("GO null model", "GO micro model", "GO full model", "GO mm model"),
+             filename = "week4_GO_overlap.png")
+
+
+# Venn diagram of the overlap between 2 week significant genes with and without adjusting for cell proportions
+venn.diagram(x = list(rownames(sigScr4), rownames(Scr4vsSka4_micro), rownames(sigScr4_prop), rownames(Scr4vsSka4_mm_sig)),
+             category.names = c("DEGs week 4", "DEGs week 4 with microglia", "DEGs week 4 with all celltypes", "DEGs week 4 with mm"),
+             filename = "week4_DEG_overlap.png")
+
 
 # Add the KEGG analysis to week 2 and 4 as well
 for(i in names(week2)){
@@ -734,16 +726,5 @@ for(i in names(week4)){
 
 # ------
 
-# Correlation analysis
-# -------- 
-# condition vs. microglia prop/neuron prop
-cor(metadata$num_condition, metadata$prop_microglia) #0.8729364
-cor(metadata$num_condition, metadata$prop_neuron) #-0.8709802
-
-# microglia vs. neuron
-cor(metadata$prop_microglia, metadata$prop_neuron) #-0.9726371
-# -------- 
-
-
-
+save.image("/PHShome/je637/RNAseq/RNAseq_Ska2/workenvironment/DEG_analysis_multiple_designs.RData")
 
