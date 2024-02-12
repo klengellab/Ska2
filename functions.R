@@ -1,5 +1,27 @@
 # Functions that are used for the Ska2 project from Jakob Hartmann
 
+# PCA plot function
+ggPCA <- function(pca, metadata, variables){
+  PCA_out <- as.data.frame(pca$x)
+  percentage <- round(pca$sdev / sum(pca$sdev) * 100, 2)
+  percentage <- paste0(colnames(PCA_out), " (", percentage, "%", ")")
+  theme <- theme(panel.background = element_blank(), 
+                 panel.border = element_rect(fill = NA), 
+                 panel.grid.major = element_blank(), 
+                 panel.grid.minor = element_blank(), 
+                 strip.background = element_blank(), 
+                 axis.text.x = element_text(colour = "black"), 
+                 axis.text.y = element_text(colour = "black"),
+                 axis.ticks = element_line(colour = "black"), 
+                 plot.margin = unit(c(1, 1, 1, 1), "line"))
+  for(i in variables){
+    p <- ggplot(PCA_out, aes(x = PC1, y = PC2, color = metadata[, i])) + 
+      geom_point() + theme + xlab(percentage[1]) + ylab(percentage[2]) + 
+      labs(color = i)
+    print(p)
+  }
+}
+
 # Converting ensembl names to external gene names
 biomart_ensembl_to_gene <- function(gene){
   ensembl=useMart("ensembl")
