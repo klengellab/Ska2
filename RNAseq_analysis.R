@@ -31,38 +31,7 @@ options(stringsAsFactors = FALSE)
 set.seed(1234)
 
 # Functions
-source("/PHShome/je637/gitlab/general_functions/plot/customPCA.R")
-ensembl2gene <- function(ensembl_name){
-  if(length(ensembl_name > 1)){
-    gene <- list()
-    for(i in ensembl_name){
-      ens_id <- genes %>% dplyr::filter(ensembl_gene_id == i) %>%
-        dplyr::select(external_gene_name) %>% pull()
-      if(length(ens_id) == 0){
-        gene <- append(gene, i)
-      } else if(ens_id == ""){
-        gene <- append(gene, i)
-      } else if(length(ens_id != 0)){
-        gene <- append(gene, ens_id)
-      } else {
-        gene <- append(gene, i)
-      }
-    }
-  } else {
-    ens_id <- genes %>% dplyr::filter(ensembl_gene_id == ensembl_name) %>%
-      dplyr::select(external_gene_name) %>% pull()
-    if(length(ens_id) == 0){
-      gene <- append(gene, i)
-    } else if(ens_id == ""){
-      gene <- append(gene, i)
-    } else if(length(ens_id != 0)){
-      gene <- append(gene, ens_id)
-    } else {
-      gene <- append(gene, i)
-    }
-  }
-  return(gene)
-}
+source("/PHShome/je637/gitlab/rna-seq/Ska2_Jakob_2020/functions.R")
 genes <- read.csv("/PHShome/je637/general/tables/ensembl_w_description.mouse.csv")
 
 # Paths
@@ -88,10 +57,11 @@ x <- match(colnames(data),rownames(metadata))
 metadata <- metadata[x,]
 all(rownames(metadata) == colnames(data)) # This should be true if not check the order.
 
+# Add sequencing depth to metadata
+metadata$seq_depth <- colSums(data)
 
 # First I need to add the cell type proportions to the metadata therefore, I need to 
 # first split the dataframe by cell types
-
 cell_types <- unique(all_cell_prop$X2)
 for(cell in cell_types){
   message(cell)
@@ -149,7 +119,7 @@ dim(filtered_data)
 
 # Perform PCA analysis with the cell types to see which ones are significant in co-variables
 # and if there is an co-linearity
-pd <- metadata[,c(3:8,9:19)]
+pd <- metadata[,c(3:20)]
 log_data <- log2(filtered_data + 1)
 custom.PCA(beta = log_data, pd = pd, plot.title = "PCA before normalization")
 
@@ -159,7 +129,7 @@ custom.PCA(beta = log_data, pd = pd, plot.title = "PCA before normalization")
 
 # --------
 # Differential expression analysis with Deseq2 including the cell type proportions
-coldata <- metadata[,c(1,3:8,9:19)]
+coldata <- metadata[,c(1,3:20)]
 coldata$libbatch <- as.factor(coldata$libbatch)
 rownames(coldata) <- coldata$samplename
 
@@ -179,7 +149,7 @@ Scr2vsSka2_micro$genes <- as.character(ensembl2gene(Scr2vsSka2_micro$genes))
 write.csv(Scr2vsSka2_micro, "/PHShome/je637/RNAseq/RNAseq_Ska2/output/all_genes_2weeks.csv")
 
 Scr2vsSka2_micro <- filter(Scr2vsSka2_micro, padj <= 0.05)
-length(rownames(Scr2vsSka2_micro)) #1367
+length(rownames(Scr2vsSka2_micro)) 
 
 write.csv(Scr2vsSka2_micro, "/PHShome/je637/RNAseq/RNAseq_Ska2/output/significant_genes_2weeks.csv")
           
@@ -190,10 +160,9 @@ Scr4vsSka4_micro$genes <- as.character(ensembl2gene(Scr4vsSka4_micro$genes))
 write.csv(Scr4vsSka4_micro, "/PHShome/je637/RNAseq/RNAseq_Ska2/output/all_genes_4weeks.csv")
 
 Scr4vsSka4_micro <- filter(Scr4vsSka4_micro, padj <= 0.05)
-length(rownames(Scr4vsSka4_micro)) #5621
+length(rownames(Scr4vsSka4_micro)) 
 
 write.csv(Scr4vsSka4_micro, "/PHShome/je637/RNAseq/RNAseq_Ska2/output/significant_genes_4weeks.csv")
-
 
 
 # --------
@@ -203,7 +172,7 @@ write.csv(Scr4vsSka4_micro, "/PHShome/je637/RNAseq/RNAseq_Ska2/output/significan
 # --------
 ## PCA after normalization
 norm.data <-counts(dds_cell_micro, normalized=TRUE)
-pd <- metadata[,c(3:8,9:19)] # check the colnames I need
+pd <- metadata[,c(3:20)] # check the colnames I need
 log_data <- log2(norm.data + 1)
 custom.PCA(beta = log_data, pd = pd, plot.title = "PCA after normalization")
 
@@ -232,7 +201,6 @@ var <- cor(data_x)  # independent variables correlation matrix
 # Variance stabilization transformation
 # --------
 ## This is used to reduce type 1 error
-source("/PHShome/je637/gitlab/rna-seq/Jonathan Human AD/plot_PCA_deseq2_modified.R")
 vsd <- vst(object=dds_cell_micro,blind=FALSE)
 vst_values <- assay(vsd)
 
@@ -264,7 +232,7 @@ corrplot(M, add = TRUE,method = "number",type = 'lower',
          tl.pos = 'n', cl.pos = 'n',
          p.mat = res1$p, sig.level = .05, insig = 'blank')
 
-pdf(file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/correlation_plot_V2.pdf", width = 15, height = 10)
+pdf(file = paste0(output_path, "SF5.pdf"), width = 15, height = 10)
 corrplot(M, method = "ellipse",type = 'upper',
          tl.pos = 'tp', tl.srt = 45, tl.col = 'black',
          p.mat = res1$p, sig.level = .05, insig = 'blank')
@@ -295,7 +263,6 @@ enrich_2week <- enrichGO(
   readable = FALSE)
 length(which(enrich_2week@result$p.adjust <= 0.05))
 enrich_2week_micro <- enrich_2week@result[c(1:318),]
-# I only have now 318 enriched terms instead of the 342 enriched terms previously
 
 enrich_4week <- enrichGO(
   gene = sig_week4,
@@ -320,22 +287,6 @@ ensembl = useDataset("mmusculus_gene_ensembl", mart = ensembl)
 
 
 # KEGG analysis
-KEGG_enrichment <- function(genes, universe){
-  # Enrichment analysis with msigdbr/clusterProfiler
-  # genes is a character vector of external gene names
-  # univere is a character vector of external gene names
-  # Databases are from GSEA
-  message("KEGG analysis")
-  KEGG_datasets <- msigdbr(species = "Mus musculus", category = "C2", subcategory = "CP:KEGG")
-  enriched_KEGG <- as.data.frame(enricher(genes, universe = universe, pvalueCutoff = 0.05, 
-                                          qvalueCutoff = 0.05, pAdjustMethod = "BH", TERM2GENE =
-                                            KEGG_datasets[,c("gs_name", "ensembl_gene")]))
-  enriched_KEGG$Description <- str_sub(enriched_KEGG$ID,6) 
-  enriched_KEGG$Description <- str_replace_all(enriched_KEGG$Description, "_", " ")
-  
-  return(enriched_KEGG)
-}
-
 
 # KEGG analysis with microglia in model
 week2_KEGG_micro <- getBM(attributes=c("ensembl_gene_id", "external_gene_name"),
@@ -368,7 +319,9 @@ colnames(bubble_2_GO_micro) <- c("Category", "ID", "Term", "Genes", "adj_pval")
 bubble_2_GO_micro$Genes <- gsub("/", ",", bubble_2_GO_micro$Genes, fixed = TRUE)
 bubble_2_GO_micro$Genes <- toupper(bubble_2_GO_micro$Genes)
 bubble_2_GO_micro$Genes <- as.factor(bubble_2_GO_micro$Genes)
+
 bubble_2_sig_micro <- Scr2vsSka2_micro[,c(7,2,1,5,6)]
+bubble_2_sig_micro$genes <- rownames(bubble_2_sig_micro)
 colnames(bubble_2_sig_micro) <- c("ID", "logFC", "AveExpr", "P.value", "adj.P.Val")
 
 ## zscores week 2
@@ -382,7 +335,9 @@ bubble_4_GO_micro$Genes <- gsub("/", ",", bubble_4_GO_micro$Genes, fixed = TRUE)
 bubble_4_GO_micro$Genes <- toupper(bubble_4_GO_micro$Genes)
 bubble_4_GO_micro$Genes <- as.factor(bubble_4_GO_micro$Genes)
 
+
 bubble_4_sig_micro <- Scr4vsSka4_micro[,c(7,2,1,5,6)]
+bubble_4_sig_micro$genes <- rownames(bubble_4_sig_micro)
 colnames(bubble_4_sig_micro) <- c("ID", "logFC", "AveExpr", "P.value", "adj.P.Val")
 
 ## zscores week 4
@@ -397,13 +352,13 @@ for(i in names(zscores)){
     wb <- createWorkbook()
     addWorksheet(wb, n)
     writeData(wb, n, zscores[[i]])
-    saveWorkbook(wb, file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/zscores_enrichment_analysis.xlsx", overwrite = TRUE)
+    saveWorkbook(wb, file = paste0(output_path, "zscores_enrichment_analysis.xlsx"), overwrite = TRUE)
   } else {
     n = i
-    wb <- loadWorkbook(file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/zscores_enrichment_analysis.xlsx")
+    wb <- loadWorkbook(file = paste0(output_path, "zscores_enrichment_analysis.xlsx"))
     addWorksheet(wb, n)
     writeData(wb, n, zscores[[i]], startRow = 1, startCol = 1, colNames = TRUE)
-    saveWorkbook(wb, file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/zscores_enrichment_analysis.xlsx", overwrite = TRUE)
+    saveWorkbook(wb, file = paste0(output_path, "zscores_enrichment_analysis.xlsx"), overwrite = TRUE)
     
   }
 }
@@ -420,34 +375,15 @@ bubble_2_KEGG_micro$Genes <- gsub("/", ",", bubble_2_KEGG_micro$Genes, fixed = T
 bubble_2_KEGG_micro$Genes <- toupper(bubble_2_KEGG_micro$Genes)
 bubble_2_KEGG_micro$Genes <- as.factor(bubble_2_KEGG_micro$Genes)
 
-bubble_2_sig_KEGG_micro <- Scr2vsSka2_micro
-x <- which(bubble_2_sig_KEGG_micro$genes %in% week2_KEGG_micro$ensembl_gene_id)
-bubble_2_sig_KEGG_micro <- bubble_2_sig_KEGG_micro[x,]
-bubble_2_sig_KEGG_micro <- bubble_2_sig_KEGG_micro[,c(7,2,1,5,6)]
-colnames(bubble_2_sig_KEGG_micro) <- c("ID", "logFC", "AveExpr", "P.value", "adj.P.Val")
 
-zscore_week2_KEGG_micro <- circle_dat(bubble_2_KEGG_micro, bubble_2_sig_KEGG_micro)
+bubble_2_sig_micro <- Scr2vsSka2_micro[,c(7,2,1,5,6)]
+bubble_2_sig_micro$genes <- rownames(bubble_2_sig_micro)
+colnames(bubble_2_sig_micro) <- c("ID", "logFC", "AveExpr", "P.value", "adj.P.Val")
+zscore_week2_KEGG_micro <- GOplot::circle_dat(bubble_2_KEGG_micro, bubble_2_sig_micro)
 
-# There are no enriched terms at the 4 weeks timepoint KEGG
+zscore_week2_KEGG_micro <- subset(zscore_week2_KEGG_micro, !duplicated(zscore_week2_KEGG_micro$term))
 
 
-zscores <- list(zscore_week2_KEGG_micro)
-names(zscores) <- c("zscore_week2_with_microglia")
-for(i in names(zscores)){
-  if(i == "zscore_week2_with_microglia"){
-    n = i
-    wb <- createWorkbook()
-    addWorksheet(wb, n)
-    saveWorkbook(wb, file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/zscores_enrichment_analysis_KEGG.xlsx", overwrite = TRUE)
-  } else {
-    n = i
-    wb <- loadWorkbook(file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/zscores_enrichment_analysis_KEGG.xlsx")
-    addWorksheet(wb, n)
-    writeData(wb, n, zscores[[i]], startRow = 1, startCol = 1, colNames = TRUE)
-    saveWorkbook(wb, file = "/PHShome/je637/RNAseq/RNAseq_Ska2/output/zscores_enrichment_analysis_KEGG.xlsx", overwrite = TRUE)
-    
-  }
-}
 # -----
 
 save.image("/PHShome/je637/RNAseq/RNAseq_Ska2/workenvironment/DEG_analysis_cellprop.RDS")
